@@ -63,6 +63,25 @@
   .meal:focus-within{box-shadow:0 0 0 2px currentColor inset}
   .asa:focus-within{color:var(--asa)} .hiru:focus-within{color:var(--hiru)} .yoru:focus-within{color:var(--yoru)}
   .stat{text-align:center;font-size:12px;color:var(--sub);margin:4px 0 10px}
+  .search{margin-top:10px}
+  .search input{width:100%;border:0;border-radius:999px;padding:10px 16px;font-size:16px;
+    font-family:inherit;color:var(--ink);outline:none;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  #results{display:none;background:#fff;border-radius:18px;padding:12px;margin-bottom:12px;
+    box-shadow:0 2px 10px rgba(255,92,157,.18);border:2px solid #ffd0e0}
+  #results.show{display:block}
+  #results h3{margin:0 0 8px;font-size:14px;color:#ff5c9d}
+  .hit{display:flex;gap:10px;align-items:flex-start;padding:10px;border-radius:12px;
+    background:#fff8f0;margin-bottom:6px;cursor:pointer}
+  .hit:active{background:#ffeede}
+  .hit .hd{flex-shrink:0;font-weight:800;font-size:14px;min-width:96px}
+  .hit .hd small{display:block;font-weight:600;color:var(--sub);font-size:11px;margin-top:2px}
+  .hit .tag{flex-shrink:0;font-size:11px;font-weight:800;color:#fff;border-radius:6px;padding:3px 6px}
+  .hit .tx{font-size:14px;word-break:break-all}
+  .hit mark{background:#fff0a0;border-radius:3px;padding:0 1px}
+  .more,.none{text-align:center;font-size:13px;color:var(--sub);padding:6px}
+  .more button{background:#ff5c9d;color:#fff;border:0;border-radius:999px;padding:6px 16px;font-size:13px;font-weight:700}
+  .day.flash{animation:flash 1.6s}
+  @keyframes flash{0%,60%{box-shadow:0 0 0 4px #ff5c9d}100%{box-shadow:0 2px 8px rgba(58,51,64,.07)}}
   #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#3a3340;
     color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
   #toast.show{opacity:.92}
@@ -86,9 +105,13 @@
     <button id="exportBtn">バックアップ</button>
     <button id="importBtn">復元</button>
   </div>
+  <div class="search">
+    <input type="search" id="q" placeholder="🔍 検索（例：マクドナルド）" enterkeyhint="search">
+  </div>
   <input type="file" id="file" accept="application/json" hidden>
 </header>
 <main>
+  <div id="results"></div>
   <div class="stat" id="stat"></div>
   <div id="list"></div>
 </main>
@@ -171,6 +194,71 @@ document.getElementById('file').onchange=e=>{
   r.onload=()=>{ try{ const obj=JSON.parse(r.result); Object.assign(data,obj); save(); render(); toast('復元しました'); }catch(err){ toast('ファイルが読めません'); } };
   r.readAsText(f); e.target.value='';
 };
+
+// ---- 検索 ----
+const COLORS = {asa:'var(--asa)', hiru:'var(--hiru)', yoru:'var(--yoru)'};
+const LABEL = {asa:'朝', hiru:'昼', yoru:'夜'};
+// 全角/半角・大文字/小文字・ひらがな/カタカナの違いを無視
+function norm(s){
+  return s.normalize('NFKC').toLowerCase()
+    .replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0)+0x60));
+}
+function esc(s){ return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function highlight(text, q){
+  const n = norm(text), nq = norm(q);
+  // NFKCで長さが変わらない場合のみハイライト
+  if(n.length !== text.length) return esc(text);
+  let out='', i=0, p;
+  while((p = n.indexOf(nq, i)) !== -1){
+    out += esc(text.slice(i,p)) + '<mark>' + esc(text.slice(p,p+nq.length)) + '</mark>';
+    i = p + nq.length;
+  }
+  return out + esc(text.slice(i));
+}
+function daysAgo(k){
+  const [yy,mm,dd] = k.split('-').map(Number);
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((t - new Date(yy,mm-1,dd)) / 86400000);
+  return diff === 0 ? '今日' : diff === 1 ? '昨日' : diff > 0 ? `${diff}日前` : `${-diff}日後`;
+}
+let shown = 3;
+function search(){
+  const q = document.getElementById('q').value.trim();
+  const box = document.getElementById('results');
+  if(!q){ box.classList.remove('show'); box.innerHTML=''; return; }
+  const nq = norm(q), hits = [];
+  for(const k of Object.keys(data).sort().reverse()){
+    for(const [id] of MEALS){
+      const v = data[k][id];
+      if(v && norm(v).includes(nq)) hits.push({k,id,v});
+    }
+  }
+  let html = `<h3>「${esc(q)}」の記録：${hits.length}件</h3>`;
+  if(!hits.length) html += `<div class="none">見つかりませんでした</div>`;
+  for(const h of hits.slice(0, shown)){
+    const [yy,mm,dd] = h.k.split('-').map(Number);
+    const w = WD[new Date(yy,mm-1,dd).getDay()];
+    html += `<div class="hit" data-k="${h.k}">
+      <div class="hd">${yy}/${mm}/${dd}(${w})<small>${daysAgo(h.k)}</small></div>
+      <span class="tag" style="background:${COLORS[h.id]}">${LABEL[h.id]}</span>
+      <div class="tx">${highlight(h.v, q)}</div></div>`;
+  }
+  if(hits.length > shown) html += `<div class="more"><button id="moreBtn">もっと見る（残り${hits.length-shown}件）</button></div>`;
+  box.innerHTML = html;
+  box.classList.add('show');
+}
+document.getElementById('q').addEventListener('input', ()=>{ shown = 3; search(); });
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
+document.getElementById('results').addEventListener('click', e=>{
+  if(e.target.id === 'moreBtn'){ shown += 10; search(); return; }
+  const hit = e.target.closest('.hit'); if(!hit) return;
+  const [yy,mm] = hit.dataset.k.split('-').map(Number);
+  y = yy; m = mm-1; render();
+  setTimeout(()=>{
+    const el = document.getElementById('d-'+hit.dataset.k);
+    if(el){ el.scrollIntoView({block:'center', behavior:'smooth'}); el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),1700); }
+  }, 50);
+});
 
 render();
 setTimeout(scrollToToday,100);
