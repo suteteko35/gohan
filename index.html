@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff7a59">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ごはん日記">
+<title>ごはん日記</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#fff8f0; --ink:#3a3340; --sub:#8a8090;
+    --asa:#ffb347; --asa-bg:#fff3df;
+    --hiru:#4cc38a; --hiru-bg:#e3f8ee;
+    --yoru:#7b6cf6; --yoru-bg:#ece9ff;
+    --sun:#ff5c7a; --sat:#3d9bff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+  header{position:sticky;top:0;z-index:10;
+    background:linear-gradient(120deg,#ff7a59,#ffb347 45%,#ff5c9d);
+    color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 12px 12px;
+    box-shadow:0 4px 14px rgba(255,122,89,.35);border-radius:0 0 22px 22px}
+  .title{font-size:13px;font-weight:700;opacity:.9;text-align:center;letter-spacing:.1em}
+  .nav{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+  .nav button{background:rgba(255,255,255,.25);border:0;color:#fff;font-size:22px;
+    width:44px;height:44px;border-radius:50%;cursor:pointer}
+  .nav button:active{background:rgba(255,255,255,.45)}
+  #month{font-size:24px;font-weight:800;letter-spacing:.03em}
+  .bar{display:flex;gap:8px;justify-content:center;margin-top:8px}
+  .bar button{background:#fff;color:#ff7a59;border:0;border-radius:999px;
+    padding:6px 14px;font-size:13px;font-weight:700}
+  .legend{display:flex;gap:10px;justify-content:center;margin-top:8px;font-size:12px}
+  .legend span{display:flex;align-items:center;gap:4px}
+  .dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:2px solid #fff}
+  main{padding:12px 10px calc(env(safe-area-inset-bottom) + 40px);max-width:640px;margin:0 auto}
+  .day{background:#fff;border-radius:18px;margin-bottom:10px;display:flex;
+    box-shadow:0 2px 8px rgba(58,51,64,.07);overflow:hidden}
+  .day.today{outline:3px solid #ff7a59}
+  .date{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;background:#fafafa;padding:8px 0}
+  .date .d{font-size:24px;font-weight:800;line-height:1}
+  .date .w{font-size:12px;font-weight:700;margin-top:4px;color:var(--sub)}
+  .day.sun .date{background:#ffe8ed}.day.sun .d,.day.sun .w{color:var(--sun)}
+  .day.sat .date{background:#e5f1ff}.day.sat .d,.day.sat .w{color:var(--sat)}
+  .day.today .date{background:#ff7a59}.day.today .d,.day.today .w{color:#fff}
+  .meals{flex:1;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .meal{display:flex;align-items:flex-start;gap:6px;border-radius:12px;padding:4px 6px}
+  .meal label{flex-shrink:0;font-size:12px;font-weight:800;color:#fff;border-radius:8px;
+    padding:4px 7px;margin-top:3px}
+  .meal textarea{flex:1;min-width:0;border:0;background:transparent;resize:none;
+    font-size:16px;font-family:inherit;color:var(--ink);padding:4px 2px;line-height:1.4;
+    outline:none;height:30px;overflow:hidden}
+  .meal textarea::placeholder{color:#c9c2cf}
+  .asa{background:var(--asa-bg)} .asa label{background:var(--asa)}
+  .hiru{background:var(--hiru-bg)} .hiru label{background:var(--hiru)}
+  .yoru{background:var(--yoru-bg)} .yoru label{background:var(--yoru)}
+  .meal:focus-within{box-shadow:0 0 0 2px currentColor inset}
+  .asa:focus-within{color:var(--asa)} .hiru:focus-within{color:var(--hiru)} .yoru:focus-within{color:var(--yoru)}
+  .stat{text-align:center;font-size:12px;color:var(--sub);margin:4px 0 10px}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#3a3340;
+    color:#fff;padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.3s;pointer-events:none}
+  #toast.show{opacity:.92}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">🍙 ごはん日記</div>
+  <div class="nav">
+    <button id="prev" aria-label="前の月">‹</button>
+    <div id="month"></div>
+    <button id="next" aria-label="次の月">›</button>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--asa)"></i>朝</span>
+    <span><i class="dot" style="background:var(--hiru)"></i>昼</span>
+    <span><i class="dot" style="background:var(--yoru)"></i>夜</span>
+  </div>
+  <div class="bar">
+    <button id="todayBtn">今日へ</button>
+    <button id="exportBtn">バックアップ</button>
+    <button id="importBtn">復元</button>
+  </div>
+  <input type="file" id="file" accept="application/json" hidden>
+</header>
+<main>
+  <div class="stat" id="stat"></div>
+  <div id="list"></div>
+</main>
+<div id="toast"></div>
+
+<script>
+const KEY = 'meal-log-v1';
+const WD = ['日','月','火','水','木','金','土'];
+const MEALS = [['asa','朝','朝ごはん'],['hiru','昼','昼ごはん'],['yoru','夜','夜ごはん']];
+let data = {};
+try { data = JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e) { data = {}; }
+
+const now = new Date();
+let y = now.getFullYear(), m = now.getMonth();
+
+const pad = n => String(n).padStart(2,'0');
+const keyOf = (yy,mm,dd) => `${yy}-${pad(mm+1)}-${pad(dd)}`;
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){ toast('保存できませんでした'); } }
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('show'); clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),1600); }
+function grow(t){ t.style.height='30px'; t.style.height=t.scrollHeight+'px'; }
+
+function render(){
+  document.getElementById('month').textContent = `${y}年 ${m+1}月`;
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  const days = new Date(y, m+1, 0).getDate();
+  const todayKey = keyOf(now.getFullYear(), now.getMonth(), now.getDate());
+  let filled = 0;
+  for(let d=1; d<=days; d++){
+    const k = keyOf(y,m,d), w = new Date(y,m,d).getDay();
+    const rec = data[k] || {};
+    const div = document.createElement('div');
+    div.className = 'day' + (w===0?' sun':'') + (w===6?' sat':'') + (k===todayKey?' today':'');
+    div.id = 'd-'+k;
+    let html = `<div class="date"><div class="d">${d}</div><div class="w">${WD[w]}</div></div><div class="meals">`;
+    for(const [id,lab,ph] of MEALS){
+      if(rec[id]) filled++;
+      html += `<div class="meal ${id}"><label>${lab}</label><textarea rows="1" data-k="${k}" data-m="${id}" placeholder="${ph}"></textarea></div>`;
+    }
+    div.innerHTML = html + '</div>';
+    div.querySelectorAll('textarea').forEach(t=>{ t.value = rec[t.dataset.m] || ''; });
+    list.appendChild(div);
+  }
+  list.querySelectorAll('textarea').forEach(grow);
+  document.getElementById('stat').textContent = `今月の記録：${filled} / ${days*3} 食`;
+}
+
+document.getElementById('list').addEventListener('input', e=>{
+  const t = e.target; if(t.tagName!=='TEXTAREA') return;
+  grow(t);
+  const k=t.dataset.k, id=t.dataset.m, v=t.value;
+  data[k] = data[k] || {};
+  if(v.trim()) data[k][id]=v; else delete data[k][id];
+  if(!Object.keys(data[k]).length) delete data[k];
+  save();
+  const days=new Date(y,m+1,0).getDate(); let f=0;
+  for(let d=1; d<=days; d++){ const r=data[keyOf(y,m,d)]; if(r) f+=Object.keys(r).length; }
+  document.getElementById('stat').textContent = `今月の記録：${f} / ${days*3} 食`;
+});
+
+function scrollToToday(){
+  const el = document.getElementById('d-'+keyOf(now.getFullYear(),now.getMonth(),now.getDate()));
+  if(el) el.scrollIntoView({block:'center', behavior:'smooth'});
+}
+document.getElementById('prev').onclick=()=>{ m--; if(m<0){m=11;y--;} render(); window.scrollTo(0,0); };
+document.getElementById('next').onclick=()=>{ m++; if(m>11){m=0;y++;} render(); window.scrollTo(0,0); };
+document.getElementById('todayBtn').onclick=()=>{ y=now.getFullYear(); m=now.getMonth(); render(); setTimeout(scrollToToday,50); };
+
+document.getElementById('exportBtn').onclick=()=>{
+  const blob = new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `gohan-backup-${keyOf(now.getFullYear(),now.getMonth(),now.getDate())}.json`;
+  a.click(); toast('バックアップを保存しました');
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ const obj=JSON.parse(r.result); Object.assign(data,obj); save(); render(); toast('復元しました'); }catch(err){ toast('ファイルが読めません'); } };
+  r.readAsText(f); e.target.value='';
+};
+
+render();
+setTimeout(scrollToToday,100);
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
+</script>
+</body>
+</html>
