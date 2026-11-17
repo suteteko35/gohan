@@ -66,7 +66,8 @@
   .search{margin-top:10px}
   .search input{width:100%;border:0;border-radius:999px;padding:10px 16px;font-size:16px;
     font-family:inherit;color:var(--ink);outline:none;box-shadow:0 2px 6px rgba(0,0,0,.12)}
-  #results{display:none;background:#fff;border-radius:18px;padding:12px;margin-bottom:12px;
+  #results{display:none;background:#fff;border-radius:18px;padding:12px;margin-top:10px;
+    max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch;color:var(--ink);
     box-shadow:0 2px 10px rgba(255,92,157,.18);border:2px solid #ffd0e0}
   #results.show{display:block}
   #results h3{margin:0 0 8px;font-size:14px;color:#ff5c9d}
@@ -108,10 +109,10 @@
   <div class="search">
     <input type="search" id="q" placeholder="🔍 検索（例：マクドナルド）" enterkeyhint="search">
   </div>
+  <div id="results"></div>
   <input type="file" id="file" accept="application/json" hidden>
 </header>
 <main>
-  <div id="results"></div>
   <div class="stat" id="stat"></div>
   <div id="list"></div>
 </main>
@@ -248,10 +249,13 @@ function search(){
   box.classList.add('show');
 }
 document.getElementById('q').addEventListener('input', ()=>{ shown = 3; search(); });
+document.getElementById('q').addEventListener('focus', search);
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.blur(); });
 document.getElementById('results').addEventListener('click', e=>{
   if(e.target.id === 'moreBtn'){ shown += 10; search(); return; }
   const hit = e.target.closest('.hit'); if(!hit) return;
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('q').blur();
   const [yy,mm] = hit.dataset.k.split('-').map(Number);
   y = yy; m = mm-1; render();
   setTimeout(()=>{
